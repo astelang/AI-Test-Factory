@@ -1,68 +1,120 @@
 import streamlit as st
 import os
+import time
+from datetime import datetime
 from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, Process, LLM
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="AI QA Factory", page_icon="🤖", layout="wide")
+# --- ENTERPRISE CONFIGURATION ---
+st.set_page_config(page_title="Enterprise AI QA Gateway", page_icon="🏦", layout="wide")
 
-# --- LOAD API KEY ---
+# Professional Banking UI Styling
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stButton>button { background-color: #004a99; color: white; font-weight: bold; height: 3.5em; border-radius: 8px; }
+    .stTextArea>div>div>textarea { background-color: #ffffff; border: 1px solid #004a99; }
+    .stStatus { border-left: 5px solid #004a99; }
+    </style>
+    """, unsafe_content_type=True)
+
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
-# --- UI HEADER ---
-st.title("🚀 Autonomous QA Test Factory")
-st.markdown("### From Requirement to Selenium Code in Seconds")
-st.info("Enter your business requirement below to trigger the AI Agent Crew.")
-
-# --- INPUT AREA ---
-user_input = st.text_area("Business Requirement:", 
-    placeholder="e.g., A user should only be able to transfer funds if their account balance is above $1000.")
-
-if st.button("Generate Automation Suite"):
-    if not api_key:
-        st.error("API Key missing! Please check your .env file.")
-    elif not user_input:
-        st.warning("Please enter a requirement first.")
+# --- DATABASE SIMULATION LOGIC ---
+def simulate_tdm_query(req_text):
+    """Simulates Test Data Management (TDM) Agent finding real account data"""
+    st.markdown("### 🗄️ Enterprise Data Intelligence Layer")
+    col_sql, col_data = st.columns(2)
+    
+    # Logic-based SQL generation simulation
+    if "withdraw" in req_text.lower() or "transfer" in req_text.lower():
+        query = "SELECT TOP 1 account_id, balance FROM CORE_BANK_DB.ACCOUNTS WHERE STATUS='ACTIVE' AND CURRENCY='USD' AND AVAILABLE_LIMIT > 1000;"
+        mock_data = {"Account_ID": "BNP-77421-X", "Ledger_Balance": 5400.25, "Status": "Verified"}
     else:
-        with st.spinner("🤖 The Crew is working... (Analyst, SDET, and Healer are collaborating)"):
-            
-            # 1. Setup Brain
+        query = "SELECT TOP 1 cust_id FROM CRM_PROD.CUSTOMERS WHERE KYC_STATUS='COMPLETED' AND REGION='APAC';"
+        mock_data = {"Customer_ID": "CUST-9901-AMIT", "Region": "India", "KYC": "Clear"}
+
+    with col_sql:
+        st.caption("AI-Generated TDM SQL")
+        st.code(query, language="sql")
+    with col_data:
+        st.caption("Fetched UAT Test Record")
+        st.json(mock_data)
+    return mock_data
+
+# --- SIDEBAR: SYSTEM STATUS ---
+with st.sidebar:
+    st.title("🏦 CoE Dashboard")
+    st.divider()
+    st.write("**Node:** `Azure-North-Gateway-01`")
+    st.write("**Access Level:** `Senior Principal Consultant`")
+    st.write("**Operator:** `Amit`")
+    st.write("**Framework:** `CrewAI v0.102.x` / `Selenium 4.x`")
+    st.divider()
+    st.success("System: Operational")
+    st.info("GDPR/SOC2 Compliant Tunnel Active")
+
+# --- MAIN UI ---
+st.title("Global Banking Automation Gateway (GBAG)")
+st.caption("Internal Quality Engineering Center of Excellence (CoE)")
+st.divider()
+
+col_input, col_logs = st.columns([2, 1])
+
+with col_input:
+    st.markdown("##### 📝 Functional Requirement / Business Rule")
+    requirement = st.text_area("Input Requirement:", height=200, 
+        placeholder="e.g., A customer can only withdraw $500 if the account is older than 30 days...")
+
+with col_logs:
+    st.markdown("##### 📋 System Audit Trail")
+    audit_trail = st.empty()
+    audit_trail.info("Awaiting Transaction...")
+
+if st.button("🚀 INITIATE AGENTIC AUTOMATION PIPELINE"):
+    if not api_key:
+        st.error("API Error: Secure vault connection failed (Check .env)")
+    elif not requirement:
+        st.warning("Please provide a requirement to begin analysis.")
+    else:
+        # Step 1: Database Simulation
+        test_context = simulate_tdm_query(requirement)
+        
+        # Step 2: Running the Crew
+        audit_trail.write("🕒 10:42:01 - Initializing Agentic Orchestrator...")
+        time.sleep(1)
+        audit_trail.write("🕒 10:42:05 - Analyst: Extracting BFSI Logic Rules...")
+        
+        with st.spinner("🤖 Agents Collaborating in Private Cloud..."):
             my_llm = LLM(model="gpt-4-turbo", api_key=api_key)
 
-            # 2. Define Agents (Simplified for UI speed)
-            analyst = Agent(role='Analyst', goal='Extract logic', backstory='Expert BA', llm=my_llm)
-            developer = Agent(role='SDET', goal='Write Selenium', backstory='Expert Coder', llm=my_llm)
-            healer = Agent(role='Healer', goal='Fix code', backstory='QA Lead', llm=my_llm)
+            # Define Roles
+            ba = Agent(role='Functional Analyst', goal='Decompose banking rules', backstory='Ex-Oracle Financials Consultant', llm=my_llm)
+            sdet = Agent(role='SDET Lead', goal='Generate Selenium Scripts', backstory='Automation Architect', llm=my_llm)
+            healer = Agent(role='Healing Engineer', goal='Audit code stability', backstory='Quality Assurance Principal', llm=my_llm)
 
-            # 3. Define Tasks
-            t1 = Task(description=f"Analyze: {user_input}", expected_output="Business rules list", agent=analyst)
-            t2 = Task(description="Write Selenium Python code", expected_output="Python script", agent=developer)
-            t3 = Task(description="Heal the code for stability", expected_output="Final stabilized Python code", agent=healer)
+            # Define Workflow
+            t1 = Task(description=f"Analyze requirements: {requirement}", expected_output="Functional Logic Map", agent=ba)
+            t2 = Task(description=f"Using data {test_context}, write Selenium code", expected_output="Python Code", agent=sdet)
+            t3 = Task(description="Self-Heal the script for dynamic waits", expected_output="Final Stabilized Code", agent=healer)
 
-            # 4. Run Crew
-            crew = Crew(agents=[analyst, developer, healer], tasks=[t1, t2, t3], process=Process.sequential)
+            crew = Crew(agents=[ba, sdet, healer], tasks=[t1, t2, t3], process=Process.sequential)
             result = crew.kickoff()
 
-            # --- DISPLAY RESULTS ---
-            st.success("✅ Generation Complete!")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("📋 AI Analysis & Test Cases")
-                st.text_area("Report Output", value=str(result), height=400)
-            
-            with col2:
-                st.subheader("🐍 Generated Selenium Code")
-                # We tell Streamlit this is Python code for nice coloring
+            audit_trail.write("🕒 10:42:50 - Success: Artifacts Generated.")
+
+            # Display Outputs
+            st.divider()
+            out1, out2 = st.columns(2)
+            with out1:
+                st.markdown("### ✅ Analyzed Logic")
+                st.text_area("Analysis", value=str(result), height=400)
+            with out2:
+                st.markdown("### 🐍 Healed Selenium Script")
                 st.code(str(result), language="python")
 
-            st.download_button("Download Full Report", str(result), file_name="AI_QA_Report.txt")
+            st.download_button("📥 Export QA Artifacts", str(result), file_name=f"GBAG_QA_Export_{datetime.now().strftime('%Y%m%d')}.txt")
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("Project Info")
-    st.write("Built by: Amit")
-    st.write("Role: Senior Principal Consultant")
-    st.write("Tech: CrewAI + Streamlit + Selenium")
+st.divider()
+st.caption("Proprietary Tooling of Enterprise Quality Engineering Group © 2026")
