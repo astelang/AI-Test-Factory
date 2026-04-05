@@ -5,6 +5,11 @@ from langchain_openai import ChatOpenAI
 
 # 1. LOAD CREDENTIALS
 load_dotenv()
+if not os.getenv("OPENAI_API_KEY"):
+    print("❌ ERROR: OpenAI API Key is missing in the environment!")
+    exit(1)
+else:
+    print("✅ Success: API Key detected.")
 api_key = os.getenv("OPENAI_API_KEY")
 model_name = os.getenv("OPENAI_MODEL_NAME")
 
