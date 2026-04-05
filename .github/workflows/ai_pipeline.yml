@@ -1,0 +1,52 @@
+name: AI Test Generation Factory
+
+# This tells the pipeline WHEN to run
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'input_requirement.txt'  # Only runs if the requirement file changes
+      - 'main.py'                # Or if you update the agent logic
+  workflow_dispatch:            # Allows you to run it manually from the GitHub UI
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Copy your code from GitHub to the cloud runner
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python (version 3.10+ is best for CrewAI)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Install the AI Engine and Libraries
+      # We use --upgrade to ensure we get the latest stable CrewAI
+      - name: Install AI Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install crewai langchain-openai python-dotenv selenium
+
+      # 4. Run the AI Agents
+      # This pulls your API Key from GitHub Secrets safely
+      - name: Execute AI Agent Factory
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL_NAME: "gpt-4-turbo"
+        run: python main.py
+
+      # 5. Save the Output (Artifact)
+      # This allows you to download the "Final_AI_Test_Report.txt" 
+      # from the GitHub Actions page after it finishes.
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Generated-Test-Artifacts
+          path: |
+            Final_AI_Test_Report.txt
+            Automated_Test_Script.py
