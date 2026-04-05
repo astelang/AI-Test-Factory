@@ -1,20 +1,24 @@
 import os
 from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, Process, LLM
-from langchain_openai import ChatOpenAI
 
-# 1. LOAD CREDENTIALS
+# 1. CLOUD-AWARE CONFIGURATION
+# Load local .env file if it exists (for VS Code)
+# On GitHub, it will skip this and use the "Secrets" we set up
 load_dotenv()
-if not os.getenv("OPENAI_API_KEY"):
-    print("❌ ERROR: OpenAI API Key is missing in the environment!")
-    exit(1)
-else:
-    print("✅ Success: API Key detected.")
-api_key = os.getenv("OPENAI_API_KEY")
-model_name = os.getenv("OPENAI_MODEL_NAME")
 
-# 2. INITIALIZE THE AI BRAIN (The "CrewAI" way to avoid Validation Errors)
-# We wrap the model in the CrewAI LLM class to ensure compatibility
+api_key = os.getenv("OPENAI_API_KEY")
+model_name = os.getenv("OPENAI_MODEL_NAME", "gpt-4-turbo")
+
+# CRITICAL CHECK: Ensure the key is present before starting
+if not api_key or api_key == "***":
+    print("❌ ERROR: OpenAI API Key is missing or invalid in the environment.")
+    exit(1)
+
+print(f"✅ Environment Check: Using model {model_name}")
+
+# 2. INITIALIZE THE AI BRAIN
+# We use the CrewAI LLM wrapper to prevent Pydantic Validation Errors
 my_ai_brain = LLM(
     model=model_name,
     api_key=api_key
@@ -22,39 +26,40 @@ my_ai_brain = LLM(
 
 # 3. DEFINE THE AGENTS (The Personnel)
 
-# Agent A: The Analyst (Logic)
 analyst = Agent(
     role='Business Requirement Analyst',
     goal='Identify all business rules and logical conditions from the requirement.',
-    backstory='Expert in banking and telecom functional specs. You find the core "If-Then" rules.',
+    backstory='Expert in banking (BFSI) and telecom domains. You find core "If-Then" rules.',
     llm=my_ai_brain,
     verbose=True
 )
 
-# Agent B: The SDET (Gherkin & Selenium)
 developer = Agent(
     role='Lead SDET Architect',
     goal='Convert rules into Gherkin scenarios and high-quality Python Selenium code.',
-    backstory='Expert in BDD and Page Object Model. You write clean, executable automation scripts.',
+    backstory='Expert in BDD (Behavior Driven Development). You write clean, executable scripts.',
     llm=my_ai_brain,
     verbose=True
 )
 
-# Agent C: The Healer (Stability)
 healer = Agent(
     role='Self-Healing Engineer',
     goal='Audit the generated code for fragile locators and suggest robust fixes.',
-    backstory='You prevent flaky tests by replacing weak XPaths with stable CSS selectors or IDs.',
+    backstory='You prevent flaky tests by ensuring locators are resilient to UI changes.',
     llm=my_ai_brain,
     verbose=True
 )
 
 # 4. READ THE REQUIREMENT FILE
-# Ensure you have a file named 'input_requirement.txt' in your folder
-with open("input_requirement.txt", "r") as file:
-    user_requirement = file.read()
+# This is the file that triggers the GitHub Action when changed
+try:
+    with open("input_requirement.txt", "r") as file:
+        user_requirement = file.read()
+except FileNotFoundError:
+    user_requirement = "Default: User must be logged in to view balance."
+    print("⚠️ Warning: input_requirement.txt not found. Using default.")
 
-# 5. DEFINE THE TASKS (The Workflow)
+# 5. DEFINE THE TASKS
 
 task_analysis = Task(
     description=f"Analyze this requirement and list the logic: {user_requirement}",
@@ -74,18 +79,18 @@ task_healing = Task(
     agent=healer
 )
 
-# 6. ASSEMBLE THE CREW
+# 6. ASSEMBLE AND KICKOFF
 qa_crew = Crew(
     agents=[analyst, developer, healer],
     tasks=[task_analysis, task_automation, task_healing],
     process=Process.sequential
 )
 
-# 7. EXECUTE & SAVE
 print("### STARTING THE SELF-HEALING QA FACTORY ###")
 result = qa_crew.kickoff()
 
-# Save the final output to a report file
+# 7. SAVE THE OUTPUTS
+# This saves the final report that GitHub Actions will "upload" as an artifact
 with open("Final_AI_Test_Report.txt", "w") as f:
     f.write(str(result))
 
