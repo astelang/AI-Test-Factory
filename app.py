@@ -16,7 +16,7 @@ st.markdown("""
     .stTextArea>div>div>textarea { background-color: #ffffff; border: 1px solid #004a99; }
     .stStatus { border-left: 5px solid #004a99; }
     </style>
-    """, unsafe_content_type=True)
+    """, unsafe_allow_html=True)
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
