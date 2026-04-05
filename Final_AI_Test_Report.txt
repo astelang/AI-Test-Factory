@@ -1,0 +1,82 @@
+### Flaky Locator Report and Code Correction
+
+**Problem Analysis**:
+- The original code relies heavily on proper setup and exact matches of element IDs.
+- The robustness may still hinge on dynamic content, i.e., message texts might change with UI updates or business rule changes, which could break the assertions.
+
+**Specific Issues Identified**:
+1. **Use of Text Content in `account_status`**:
+    - The test simulates an account status message, which might not represent the actual UI interaction. Manipulating the text directly via code is not practical for real-world scenarios.
+
+2. **Direct Input with `send_keys` on `withdrawal_input`**:
+    - While generally stable, it assumes the clear functionality works seamlessly. Any previous input errors or persistent text might affect the test results.
+
+3. **Message Validation with `result_message.text`**:
+    - Relies on exact text matches, which makes it brittle if the message wording changes slightly due to UI updates or language localizations.
+
+### Healed Python Selenium Script:
+
+```python
+import unittest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from datetime import datetime, timedelta
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+class TestBankWithdrawal(unittest.TestCase):
+    def setUp(self):
+        # Setup Chrome webdriver
+        self.driver = webdriver.Chrome()
+        self.driver.get("http://example-bank.com/login")
+        
+        # Login process using element IDs (assumed stable and correctly assigned)
+        self.driver.find_element(By.ID, "username").send_keys("testuser")
+        self.driver.find_element(By.ID, "password").send_keys("testpassword")
+        self.driver.find_element(By.ID, "submit").click()
+
+    def test_withdrawal_eligibility(self):
+        driver = self.driver
+        WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.ID, "account_summary")))
+        
+        # Prepare scenarios
+        tests = [
+            {"status": "active", "days": 31, "withdrawal_amount": 500, "expected_message": "Withdrawal of 500 USD processed"},
+            {"status": "active", "days": 31, "withdrawal_amount": 501, "expected_message": "Withdrawal limit exceeded"},
+            {"status": "active", "days": 30, "withdrawal_amount": 500, "expected_message": "Account not eligible for withdrawal"},
+            {"status": "inactive", "days": 40, "withdrawal_amount": 500, "expected_message": "Account not active, withdrawal denied"}
+        ]
+        
+        for test in tests:
+            # Navigate directly to withdrawal form using IDs (assuming proper navigation and form preparation)
+            WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.ID, "withdrawal_form")))
+            withdrawal_input = driver.find_element(By.ID, "withdrawal_amount")
+            submit_button = driver.find_element(By.ID, "submit_withdrawal")
+            result_message = driver.find_element(By.ID, "result_message")
+            
+            # Set the withdrawal amount
+            withdrawal_input.clear()  # Ensure input is clear before sending keys
+            withdrawal_input.send_keys(str(test['withdrawal_amount']))
+            submit_button.click()
+            
+            # Verification based on expected messages
+            WebDriverWait(driver, 5).until(
+                lambda driver: result_message.text == test['expected_message'],
+                message=f"Failed on test with {test['withdrawal_amount']} USD being withdrawn"
+            )
+
+    def tearDown(self):
+        self.driver.quit()
+
+if __name__ == "__main__":
+    unittest.main()
+```
+
+**Corrections Made**:
+- **Setup and Teardown**: No change, assuming login elements are stable.
+- **Locators**: Retain use of IDs for primary interactions, which should be appropriately stable.
+- **Result Validation**: Implement `WebDriverWait` with a custom condition to allow for dynamic UI response checks. The message check retains the expected text to fulfill test criteria but wraps in a timed wait to account for any processing delays.
+
+**Additional Recommendations**:
+- **Localization**: If applicable, support for multiple languages should be tested.
+- **Additional Element Attributes**: Ensure that elements like `withdrawal_input` and `result_message` are uniquely and consistently identified. Adjust scenarios if the business rules or UI message frameworks change.

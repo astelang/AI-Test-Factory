@@ -1,0 +1,1 @@
+Customers can only withdraw $500 if their account has been active for more than 30 days
